@@ -274,7 +274,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				5A6F3F562F8A5EB600C9DB31 /* XCRemoteSwiftPackageReference "webrtc-xcframework" */,
-				D1000000000000000000000F /* XCLocalSwiftPackageReference "../OpenNow/Packages/VirtualControllerKit" */,
+				D1000000000000000000000F /* XCLocalSwiftPackageReference "LocalPackages/VirtualControllerKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5A6F3F322F8A5B1C00C9DB31 /* Products */;
@@ -793,9 +793,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		D1000000000000000000000F /* XCLocalSwiftPackageReference "../OpenNow/Packages/VirtualControllerKit" */ = {
+		D1000000000000000000000F /* XCLocalSwiftPackageReference "LocalPackages/VirtualControllerKit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../OpenNow/Packages/VirtualControllerKit;
+			relativePath = LocalPackages/VirtualControllerKit;
 		};
 /* End XCLocalSwiftPackageReference section */
 

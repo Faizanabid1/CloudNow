@@ -62,3 +62,7 @@ Scripts/Discord/.discord-state.json.lock
 Scripts/Discord/.discord-content-state.json
 Scripts/Discord/.discord-content-state.json.lock
 Scripts/Discord/.discord-rollbacks/
+
+# Swift packages
+.build/
+.swiftpm/
