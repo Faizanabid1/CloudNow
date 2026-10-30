@@ -498,7 +498,11 @@ private struct AuthRestorationView: View {
                         CloudServiceSelectionView()
                     }
                 } else {
-                    MainTabView(viewModel: viewModel, loadsRemoteData: false)
+                    #if os(iOS)
+                        PhoneMainTabView(viewModel: viewModel, loadsRemoteData: false)
+                    #else
+                        MainTabView(viewModel: viewModel, loadsRemoteData: false)
+                    #endif
                 }
             }
             .environment(

@@ -83,38 +83,42 @@ public struct ControllerLayout: Codable, Hashable, Sendable {
 
     /// Xbox-style landscape layout: sticks and pads in the lower corners, shoulders along the top.
     /// Controls are placed in points from the screen edges, so spacing holds on any aspect
-    /// ratio, then stored as fractions like any other layout.
+    /// ratio, then stored as fractions like any other layout. Tablet-sized screens get larger
+    /// controls, since they're held further from the thumbs' resting spots.
     public static func standard(in bounds: CGSize) -> ControllerLayout {
         let bounds = bounds.width > 0 && bounds.height > 0 ? bounds : CGSize(width: 852, height: 393)
         let w = bounds.width
         let h = bounds.height
+        let scale: CGFloat = min(w, h) >= 700 ? 1.3 : 1
         let margin: CGFloat = 16
         let gap: CGFloat = 8
-        let topRow = margin + 22
-        let shoulder = margin + 76 + gap + 38
-        let stickX = margin + 68
-        let padX = margin + 136 + gap + 68
-        let bottomRow = h - margin - 68
-        let face = CGPoint(x: w - margin - 28 - 62, y: h / 2)
+        let topRow = margin + 22 * scale
+        let shoulder = margin + 76 * scale + gap + 38 * scale
+        let stickX = margin + 68 * scale
+        let padX = margin + 136 * scale + gap + 68 * scale
+        let bottomRow = h - margin - 68 * scale
+        let faceSpacing = 62 * scale
+        let face = CGPoint(x: w - margin - 28 * scale - faceSpacing, y: h / 2)
+        let menuSpacing = 54 * scale
 
         let placements: [(ControlKind, CGPoint)] = [
-            (.trigger(.left), CGPoint(x: margin + 38, y: topRow)),
+            (.trigger(.left), CGPoint(x: margin + 38 * scale, y: topRow)),
             (.button(.leftShoulder), CGPoint(x: shoulder, y: topRow)),
-            (.button(.back), CGPoint(x: w / 2 - 54, y: topRow)),
+            (.button(.back), CGPoint(x: w / 2 - menuSpacing, y: topRow)),
             (.button(.guide), CGPoint(x: w / 2, y: topRow)),
-            (.button(.start), CGPoint(x: w / 2 + 54, y: topRow)),
+            (.button(.start), CGPoint(x: w / 2 + menuSpacing, y: topRow)),
             (.button(.rightShoulder), CGPoint(x: w - shoulder, y: topRow)),
-            (.trigger(.right), CGPoint(x: w - margin - 38, y: topRow)),
+            (.trigger(.right), CGPoint(x: w - margin - 38 * scale, y: topRow)),
             (.stick(.left), CGPoint(x: stickX, y: h / 2)),
             (.dpad, CGPoint(x: padX, y: bottomRow)),
-            (.button(.y), CGPoint(x: face.x, y: face.y - 62)),
-            (.button(.x), CGPoint(x: face.x - 62, y: face.y)),
-            (.button(.b), CGPoint(x: face.x + 62, y: face.y)),
-            (.button(.a), CGPoint(x: face.x, y: face.y + 62)),
+            (.button(.y), CGPoint(x: face.x, y: face.y - faceSpacing)),
+            (.button(.x), CGPoint(x: face.x - faceSpacing, y: face.y)),
+            (.button(.b), CGPoint(x: face.x + faceSpacing, y: face.y)),
+            (.button(.a), CGPoint(x: face.x, y: face.y + faceSpacing)),
             (.stick(.right), CGPoint(x: w - padX, y: bottomRow)),
         ]
         return ControllerLayout(name: "Default", elements: placements.map { kind, point in
-            ControlElement(kind: kind, center: CGPoint(x: point.x / w, y: point.y / h))
+            ControlElement(kind: kind, center: CGPoint(x: point.x / w, y: point.y / h), scale: scale)
         })
     }
 }

@@ -1251,23 +1251,13 @@ struct SettingsView: View {
                         description: L10n.text("default_input_mode_description"),
                         selection: $vm.streamSettings.defaultRemoteInputMode,
                         accessibilityIdentifier: "settings.controller.default-input-mode",
-                        options: [
+                        options: Self.remoteInputModes.map {
                             CloudNowSettingOption(
-                                value: RemoteInputMode.gamepad,
-                                title: L10n.remoteInputModeLabel(.gamepad),
-                                accessibilityIdentifier: RemoteInputMode.gamepad.rawValue
-                            ),
-                            CloudNowSettingOption(
-                                value: RemoteInputMode.dualsense,
-                                title: L10n.remoteInputModeLabel(.dualsense),
-                                accessibilityIdentifier: RemoteInputMode.dualsense.rawValue
-                            ),
-                            CloudNowSettingOption(
-                                value: RemoteInputMode.gamepadMouse,
-                                title: L10n.remoteInputModeLabel(.gamepadMouse),
-                                accessibilityIdentifier: RemoteInputMode.gamepadMouse.rawValue
-                            ),
-                        ]
+                                value: $0,
+                                title: L10n.remoteInputModeLabel($0),
+                                accessibilityIdentifier: $0.rawValue
+                            )
+                        }
                     )
                     LabeledContent(L10n.text("protocol"), value: "XInput over GFN v2/v3")
                 }
@@ -1713,6 +1703,15 @@ struct SettingsView: View {
             ]
         }
     #endif
+
+    /// Controller + Mouse drives the pointer with the Siri Remote, which phones don't have.
+    private static var remoteInputModes: [RemoteInputMode] {
+        #if os(iOS)
+            [.gamepad, .dualsense]
+        #else
+            [.gamepad, .dualsense, .gamepadMouse]
+        #endif
+    }
 
     private var tvResolutionGroups: [CloudNowSettingOptionGroup<String>] {
         let availableResolutions = Set(viewModel.availableResolutions)

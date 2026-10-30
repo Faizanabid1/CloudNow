@@ -500,13 +500,16 @@ struct StreamView: View {
             },
             isEndDisabled: isEndingSession,
             providerActions: {
-                Button {
-                    streamController.toggleRemoteMode()
-                } label: {
-                    Label(remoteModeLabel, systemImage: remoteModeIcon)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.bordered)
+                // Remote modes cycle through the Siri Remote, which phones and tablets don't have.
+                #if !os(iOS)
+                    Button {
+                        streamController.toggleRemoteMode()
+                    } label: {
+                        Label(remoteModeLabel, systemImage: remoteModeIcon)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.bordered)
+                #endif
             },
             footer: {
                 if let sub = viewModel.subscription,

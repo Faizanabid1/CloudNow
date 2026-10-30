@@ -56,6 +56,7 @@ struct PhoneGameRow: View {
     let games: [GameInfo]
     let actions: PhoneGameActions
     var emptyText: String?
+    @Environment(\.phoneMetrics) private var metrics
 
     var body: some View {
         if !games.isEmpty || emptyText != nil {
@@ -73,7 +74,7 @@ struct PhoneGameRow: View {
                         LazyHStack(alignment: .top, spacing: 12) {
                             ForEach(games) { game in
                                 PhoneGameCard(game: game, actions: actions)
-                                    .frame(width: 104)
+                                    .frame(width: metrics.cardWidth)
                             }
                         }
                         .padding(.horizontal)
@@ -90,10 +91,10 @@ struct PhoneGameGrid: View {
     let emptyText: String
     @Binding var searchText: String
     let actions: PhoneGameActions
-
-    private let columns = [GridItem(.adaptive(minimum: 96, maximum: 130), spacing: 12)]
+    @Environment(\.phoneMetrics) private var metrics
 
     var body: some View {
+        let columns = [GridItem(.adaptive(minimum: metrics.gridMinimum, maximum: metrics.gridMaximum), spacing: 12)]
         ScrollView {
             PhoneSearchField(text: $searchText)
                 .padding(.horizontal)
@@ -240,45 +241,27 @@ struct PhoneGameDetailView: View {
         let game = displayedGame
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    SharedArtworkImage(
-                        urlString: game.heroBannerUrl ?? game.heroImageUrl ?? game.screenshots.first,
-                        maxPixelSize: ArtworkImagePipeline.heroArtPixelSize
-                    )
-                    .frame(height: 170)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                    HStack(alignment: .top, spacing: 16) {
-                        GameBoxArt(url: game.boxArtUrl)
-                            .frame(width: 96)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(game.title)
-                                .font(.title2.bold())
-                            if let credits = credits(for: game) {
-                                Text(credits)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                // Side by side when the sheet is wide (iPad); stacked on phones.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 24) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            banner(for: game, height: 220)
+                            header(for: game)
+                            if game.variants.count > 1 {
+                                storePicker(for: game)
                             }
-                            if !game.genreItems.isEmpty {
-                                Text(game.genreItems.joined(separator: " · "))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            actions(for: game)
-                                .padding(.top, 6)
                         }
+                        .frame(width: 420)
+                        description(for: game)
+                            .frame(minWidth: 260, maxWidth: .infinity, alignment: .leading)
                     }
-
-                    if game.variants.count > 1 {
-                        storePicker(for: game)
-                    }
-
-                    if let description = game.longDescription, !description.isEmpty {
-                        Text(description)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 16) {
+                        banner(for: game, height: 170)
+                        header(for: game)
+                        if game.variants.count > 1 {
+                            storePicker(for: game)
+                        }
+                        description(for: game)
                     }
                 }
                 .padding()
@@ -288,6 +271,49 @@ struct PhoneGameDetailView: View {
                     Button(L10n.text("cancel"), systemImage: "xmark") { dismiss() }
                 }
             }
+        }
+    }
+
+    private func banner(for game: GameInfo, height: CGFloat) -> some View {
+        SharedArtworkImage(
+            urlString: game.heroBannerUrl ?? game.heroImageUrl ?? game.screenshots.first,
+            maxPixelSize: ArtworkImagePipeline.heroArtPixelSize
+        )
+        .frame(height: height)
+        .frame(maxWidth: .infinity)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func header(for game: GameInfo) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            GameBoxArt(url: game.boxArtUrl)
+                .frame(width: 96)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(game.title)
+                    .font(.title2.bold())
+                if let credits = credits(for: game) {
+                    Text(credits)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                if !game.genreItems.isEmpty {
+                    Text(game.genreItems.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                actions(for: game)
+                    .padding(.top, 6)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func description(for game: GameInfo) -> some View {
+        if let description = game.longDescription, !description.isEmpty {
+            Text(description)
+                .font(.callout)
+                .foregroundStyle(.secondary)
         }
     }
 

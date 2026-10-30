@@ -54,7 +54,8 @@ private func layout(_ elements: ControlElement...) -> ControllerLayout {
     CGSize(width: 667, height: 375),   // small phone, landscape
     CGSize(width: 734, height: 372),   // notched phone, landscape safe area
     CGSize(width: 678, height: 466),   // squarish foldable
-    CGSize(width: 1194, height: 790),  // iPad
+    CGSize(width: 1194, height: 790),  // iPad Pro 11-inch
+    CGSize(width: 1366, height: 1004), // iPad Pro 13-inch
 ])
 func standardLayoutFitsWithoutOverlaps(size: CGSize) {
     let frames = ControllerLayout.standard(in: size).elements.map { ($0.kind.displayName, $0.frame(in: size)) }
@@ -369,4 +370,9 @@ func tiltingUpAndBackReturnsToTheSameSpot(startTilt: Double) {
     for _ in 0 ..< 100 { total += smoother.smooth(yaw: 1, pitch: 0).yaw } // 1°/s: fully smoothed
     for _ in 0 ..< GyroSmoother.windowLength { total += smoother.smooth(yaw: 0, pitch: 0).yaw }
     #expect(abs(total - 100) < 0.001)
+}
+
+@Test func tabletsGetLargerControls() {
+    #expect(ControllerLayout.standard(in: CGSize(width: 1194, height: 790)).elements.allSatisfy { $0.scale == 1.3 })
+    #expect(ControllerLayout.standard(in: CGSize(width: 852, height: 393)).elements.allSatisfy { $0.scale == 1 })
 }

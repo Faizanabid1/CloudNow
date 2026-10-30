@@ -1,9 +1,11 @@
+import GameController
 import SwiftUI
 import VirtualControllerKit
 import VirtualControllerUI
 
 /// On-screen gamepad over the stream. The touch pad drives GFN input as an extra controller,
-/// and a pause button stands in for the Siri Remote's Menu button.
+/// and a pause button stands in for the Siri Remote's Menu button. The pad hides itself while
+/// a physical controller is connected, unless the player asks for it.
 struct StreamTouchControls: View {
     let streamController: GFNStreamController
     let onPause: () -> Void
@@ -12,13 +14,26 @@ struct StreamTouchControls: View {
     // ControllerModel holds its sink weakly.
     @State private var bridge: TouchGamepadBridge?
     @State private var isKeyboardActive = false
+    @State private var hasPhysicalController = Self.physicalControllerConnected
+    /// nil follows the controller connection; true or false is the player's own choice.
+    @State private var touchControlsOverride: Bool?
+
+    private var showsTouchControls: Bool {
+        touchControlsOverride ?? !hasPhysicalController
+    }
+
+    private static var physicalControllerConnected: Bool {
+        GCController.controllers().contains { $0.extendedGamepad != nil }
+    }
 
     var body: some View {
         ZStack {
             StreamKeyboard(isActive: $isKeyboardActive, streamController: streamController)
                 .frame(width: 0, height: 0)
 
-            ControllerOverlay(model: model)
+            if showsTouchControls || model.isEditing {
+                ControllerOverlay(model: model)
+            }
 
             if model.isEditing {
                 EditBar(model: model)
@@ -33,11 +48,32 @@ struct StreamTouchControls: View {
             self.bridge = bridge
             model.sink = bridge
             // Connect the pad right away so the game sees a controller before the first touch.
-            streamController.setVirtualGamepad(VirtualGamepadState(GamepadState()))
+            if showsTouchControls {
+                streamController.setVirtualGamepad(VirtualGamepadState(GamepadState()))
+            }
         }
         .onDisappear {
             // Stay connected while hidden behind the pause menu, but let go of everything.
             model.releaseAllTouches()
+        }
+        .onChange(of: showsTouchControls) { _, shows in
+            if shows {
+                streamController.setVirtualGamepad(VirtualGamepadState(GamepadState()))
+            } else {
+                // Unplug the touch pad so the game only sees the real controller.
+                model.releaseAllTouches()
+                streamController.setVirtualGamepad(nil)
+            }
+        }
+        .task {
+            for await _ in NotificationCenter.default.notifications(named: .GCControllerDidConnect) {
+                hasPhysicalController = Self.physicalControllerConnected
+            }
+        }
+        .task {
+            for await _ in NotificationCenter.default.notifications(named: .GCControllerDidDisconnect) {
+                hasPhysicalController = Self.physicalControllerConnected
+            }
         }
     }
 
@@ -49,6 +85,12 @@ struct StreamTouchControls: View {
                 systemImage: isKeyboardActive ? "keyboard.chevron.compact.down" : "keyboard"
             ) {
                 isKeyboardActive.toggle()
+            }
+            Button(
+                showsTouchControls ? "Hide Touch Controls" : "Show Touch Controls",
+                systemImage: showsTouchControls ? "gamecontroller.fill" : "gamecontroller"
+            ) {
+                touchControlsOverride = !showsTouchControls
             }
             Button("Edit Controls", systemImage: "slider.horizontal.3") {
                 isKeyboardActive = false

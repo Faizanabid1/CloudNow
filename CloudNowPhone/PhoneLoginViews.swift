@@ -30,12 +30,18 @@ struct PhoneLoginView: View {
     }
 
     private var providerPicker: some View {
-        VStack(spacing: 16) {
-            Text(L10n.text("sign_in_to_geforce_now"))
-                .font(.title.bold())
+        // One scroll view for the whole screen, so the list fits a sideways iPhone as well as
+        // an upright one or an iPad.
+        ScrollView {
+            VStack(spacing: 20) {
+                VStack(spacing: 4) {
+                    Text(L10n.text("app_name"))
+                        .font(.largeTitle.bold())
+                    Text(L10n.text("sign_in_to_geforce_now"))
+                        .foregroundStyle(.secondary)
+                }
 
-            if let providers {
-                ScrollView {
+                if let providers {
                     VStack(spacing: 10) {
                         ForEach(providers.sorted { $0.priority < $1.priority }, id: \.idpId) { provider in
                             Button {
@@ -50,14 +56,15 @@ struct PhoneLoginView: View {
                             .tint(provider.isNvidiaDirect ? .green : .gray)
                         }
                     }
-                    .frame(maxWidth: 360)
+                } else {
+                    ProgressView()
                 }
-                .frame(maxHeight: 220)
-            } else {
-                ProgressView()
             }
-
+            .frame(maxWidth: 380)
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity)
         }
+        .scrollBounceBehavior(.basedOnSize)
     }
 
     private func codeView(code: String, url: String, urlComplete: String) -> some View {

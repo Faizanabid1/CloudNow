@@ -6,7 +6,7 @@ struct PhoneMainTabView: View {
     @Environment(AuthManager.self) private var authManager
     @Environment(CloudSessionCoordinator.self) private var cloudSessionCoordinator
     @Environment(\.scenePhase) private var scenePhase
-    @State private var viewModel = GamesViewModel()
+    @State private var viewModel: GamesViewModel
     @State private var controllerNavigation = UIControllerNavigationCoordinator()
     @State private var selectedGame: GameInfo?
     /// Set from the detail sheet; the stream opens once the sheet has finished dismissing.
@@ -14,6 +14,14 @@ struct PhoneMainTabView: View {
     @State private var gameToPlay: GameInfo?
     @State private var sessionToResume: ActiveSessionInfo?
     @State private var directSessionToResume: SessionInfo?
+    @State private var metrics = PhoneMetrics.forWidth(700)
+    /// Off for UI-testing fixtures, which supply their own games.
+    private let loadsRemoteData: Bool
+
+    init(viewModel: GamesViewModel = GamesViewModel(), loadsRemoteData: Bool = true) {
+        _viewModel = State(initialValue: viewModel)
+        self.loadsRemoteData = loadsRemoteData
+    }
 
     var body: some View {
         TabView {
@@ -30,9 +38,16 @@ struct PhoneMainTabView: View {
                 SettingsView()
             }
         }
+        // A tab bar on iPhone; a sidebar that can collapse to a top tab bar on iPad.
+        .tabViewStyle(.sidebarAdaptable)
+        .environment(\.phoneMetrics, metrics)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+            metrics = PhoneMetrics.forWidth(width)
+        }
         .environment(viewModel)
         .environment(controllerNavigation)
         .task {
+            guard loadsRemoteData else { return }
             await viewModel.load(authManager: authManager)
             viewModel.restoreResumableSession(from: cloudSessionCoordinator.serverSession)
         }
@@ -40,7 +55,7 @@ struct PhoneMainTabView: View {
             if phase == .background {
                 viewModel.cancelStoreConnection()
             }
-            guard phase == .active else { return }
+            guard phase == .active, loadsRemoteData else { return }
             viewModel.startForegroundLibraryRefresh(authManager: authManager)
         }
         .onDisappear {
@@ -65,6 +80,8 @@ struct PhoneMainTabView: View {
                 selectedGame = nil
             }
             .environment(viewModel)
+            // A roomy page-sized sheet on iPad; phones present full height either way.
+            .presentationSizing(.page)
         }
         .fullScreenCover(item: $gameToPlay) { game in
             StreamView(

@@ -92,14 +92,25 @@ struct CloudStreamPauseMenu<ProviderActions: View, Footer: View>: View {
 
             footer
         }
-        .padding(.horizontal, 48)
-        .padding(.vertical, 80)
-        .frame(width: 480)
+        .padding(.horizontal, Self.horizontalPadding)
+        .padding(.vertical, Self.verticalPadding)
+        .frame(width: Self.width)
         .frame(maxHeight: .infinity)
         .background(pauseMenuBackgroundColor)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .ignoresSafeArea()
     }
+
+    #if os(iOS)
+        // A landscape phone is under 400 points tall, so the TV spacing would push buttons off screen.
+        private static var width: CGFloat { 320 }
+        private static var horizontalPadding: CGFloat { 24 }
+        private static var verticalPadding: CGFloat { 28 }
+    #else
+        private static var width: CGFloat { 480 }
+        private static var horizontalPadding: CGFloat { 48 }
+        private static var verticalPadding: CGFloat { 80 }
+    #endif
 
     private var pauseMenuBackgroundColor: Color {
         colorScheme == .dark ? .black.opacity(0.75) : .white.opacity(0.82)

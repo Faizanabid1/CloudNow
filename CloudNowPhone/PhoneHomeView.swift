@@ -14,6 +14,7 @@ struct PhoneHomeView: View {
     @Environment(CloudSessionCoordinator.self) private var cloudSessionCoordinator
     let actions: PhoneGameActions
     let onResume: (ResumableSession) -> Void
+    @Environment(\.phoneMetrics) private var metrics
 
     @State private var sessionToEnd: ActiveSessionInfo?
     @State private var endingSessionID: String?
@@ -110,7 +111,7 @@ struct PhoneHomeView: View {
                 urlString: game.heroBannerUrl ?? game.heroImageUrl ?? game.screenshots.first,
                 maxPixelSize: ArtworkImagePipeline.heroArtPixelSize
             )
-            .frame(height: 210)
+            .frame(height: metrics.heroHeight)
             .frame(maxWidth: .infinity)
             .clipped()
             .onTapGesture { actions.showDetail(game) }
@@ -166,7 +167,7 @@ struct PhoneHomeView: View {
                                     endButton(for: session)
                                 }
                             }
-                            .frame(width: 104)
+                            .frame(width: metrics.cardWidth)
                         }
                     }
                     .padding(.horizontal)
