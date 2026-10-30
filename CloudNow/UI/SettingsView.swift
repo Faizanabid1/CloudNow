@@ -890,11 +890,14 @@ struct SettingsView: View {
 
         NavigationStack(path: $navigationPath) {
             Form {
-                CloudNowCloudServiceSection(
-                    activeProvider: providerCoordinator.selectedProvider ?? .geForceNow,
-                    isInteractionDisabled: isProviderActionBusy,
-                    onSelectProvider: switchProvider
-                )
+                #if !os(iOS)
+                    // The iPhone/iPad app is GeForce NOW only, so there's no service to switch to.
+                    CloudNowCloudServiceSection(
+                        activeProvider: providerCoordinator.selectedProvider ?? .geForceNow,
+                        isInteractionDisabled: isProviderActionBusy,
+                        onSelectProvider: switchProvider
+                    )
+                #endif
 
                 CloudNowStreamQualitySection {
                     CloudNowSettingSelectionRow(

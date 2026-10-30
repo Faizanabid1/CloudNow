@@ -1,60 +1,9 @@
 import SwiftUI
 
-/// Phone layout of the service chooser: two large tappable cards side by side.
-struct PhoneServiceSelectionView: View {
-    @Environment(CloudGamingProviderCoordinator.self) private var providerCoordinator
-
-    var body: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 4) {
-                Text(L10n.text("app_name"))
-                    .font(.largeTitle.bold())
-                Text(L10n.text("choose_cloud_gaming_service"))
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 16) {
-                ForEach(CloudGamingProvider.allCases) { provider in
-                    let availability = providerCoordinator.capabilities(for: provider).availability
-                    Button {
-                        providerCoordinator.select(provider)
-                    } label: {
-                        VStack(spacing: 10) {
-                            Image(systemName: provider.systemImage)
-                                .font(.system(size: 34))
-                            Text(provider.displayName)
-                                .font(.headline)
-                            if let reason = availability.unavailableReason {
-                                Text(L10n.text(reason.localizationKey))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                        }
-                        .frame(maxWidth: 240, minHeight: 130)
-                        .padding(12)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(provider == .geForceNow ? .green : .blue)
-                    .disabled(!availability.isSupported)
-                }
-            }
-
-            Text(L10n.text("accounts_stay_signed_in_when_switching_services"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black)
-    }
-}
-
 /// Phone GFN sign-in. The verification page opens on this phone with the code pre-filled;
 /// the QR code still lets another device finish sign-in.
 struct PhoneLoginView: View {
     @Environment(AuthManager.self) private var authManager
-    @Environment(CloudGamingProviderCoordinator.self) private var providerCoordinator
     @Environment(\.openURL) private var openURL
     @State private var providers: [LoginProvider]?
     @State private var selectedProvider: LoginProvider?
@@ -108,11 +57,6 @@ struct PhoneLoginView: View {
                 ProgressView()
             }
 
-            Button(L10n.text("choose_another_service")) {
-                authManager.cancelLogin()
-                providerCoordinator.select(nil)
-            }
-            .font(.footnote)
         }
     }
 
@@ -185,7 +129,6 @@ struct PhoneLoginView: View {
                 .tint(.green)
                 Button(L10n.text("cancel")) {
                     authManager.cancelLogin()
-                    providerCoordinator.select(nil)
                 }
                 .buttonStyle(.bordered)
             }

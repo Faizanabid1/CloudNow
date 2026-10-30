@@ -195,30 +195,16 @@ struct CloudNowApp: App {
                         }
                     #endif
                 case .xboxCloudGaming:
-                    if !xboxAuthManager.canRequestMicrosoftDeviceCode {
-                        XboxCloudConfigurationRequiredView()
-                    } else if xboxAuthManager.isXboxCloudAuthorized,
-                              let account = xboxAuthManager.authorizedAccount,
-                              let configuration = xboxEnvironment.service
-                    {
-                        XboxMainTabView(
-                            configuration: configuration,
-                            account: account,
-                            fallbackProvider: authManager.isAuthenticated
-                                ? .geForceNow
-                                : nil
-                        )
-                    } else {
-                        XboxLoginView(
-                            fallbackProvider: authManager.isAuthenticated
-                                ? .geForceNow
-                                : nil
-                        )
-                    }
+                    #if os(iOS)
+                        // GeForce Now Duo is GeForce NOW only; a saved Xbox choice moves over.
+                        GeForceNowOnlyRedirect()
+                    #else
+                        xboxRoot
+                    #endif
                 }
             } else {
                 #if os(iOS)
-                    PhoneServiceSelectionView()
+                    GeForceNowOnlyRedirect()
                 #else
                     CloudServiceSelectionView()
                 #endif
@@ -248,6 +234,30 @@ struct CloudNowApp: App {
             if !authorized {
                 MemoryLifecycleCoordinator.shared.releaseCachedArtwork()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var xboxRoot: some View {
+        if !xboxAuthManager.canRequestMicrosoftDeviceCode {
+            XboxCloudConfigurationRequiredView()
+        } else if xboxAuthManager.isXboxCloudAuthorized,
+                  let account = xboxAuthManager.authorizedAccount,
+                  let configuration = xboxEnvironment.service
+        {
+            XboxMainTabView(
+                configuration: configuration,
+                account: account,
+                fallbackProvider: authManager.isAuthenticated
+                    ? .geForceNow
+                    : nil
+            )
+        } else {
+            XboxLoginView(
+                fallbackProvider: authManager.isAuthenticated
+                    ? .geForceNow
+                    : nil
+            )
         }
     }
 
