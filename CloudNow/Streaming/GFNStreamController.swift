@@ -357,6 +357,8 @@ final class GFNStreamController: NSObject {
     )
     private var signaling: GFNSignalingClient?
     private var inputSender: InputSender?
+    /// Latest on-screen touch control state, replayed onto each new InputSender after reconnects.
+    @ObservationIgnored private var virtualGamepadState: VirtualGamepadState?
     private(set) var videoView: VideoSurfaceView?
     private(set) var remoteMode: RemoteInputMode = .gamepad
     private var statsTimer: Timer?
@@ -625,6 +627,49 @@ final class GFNStreamController: NSObject {
 
     func toggleRemoteMode() {
         inputSender?.toggleRemoteMode()
+    }
+
+    /// Drives the on-screen touch gamepad; nil disconnects it.
+    func setVirtualGamepad(_ state: VirtualGamepadState?) {
+        virtualGamepadState = state
+        inputSender?.setVirtualGamepad(state)
+    }
+
+    /// Types text into the stream as key presses for an on-screen keyboard, without the
+    /// trailing Enter that controller text entry adds. Reports whether every key was sent.
+    func typeText(_ text: String, completion: @escaping @MainActor @Sendable (Bool) -> Void) {
+        guard let inputSender else {
+            completion(false)
+            return
+        }
+        let result = inputSender.replaySubmittedText(text, appendEnter: false) { replayResult in
+            Task { @MainActor in
+                completion(replayResult == .completed)
+            }
+        }
+        if result != .supported {
+            completion(false)
+        }
+    }
+
+    /// Relative mouse motion in remote pixels, e.g. from a touch trackpad.
+    func moveMouse(dx: Int16, dy: Int16) {
+        inputSender?.sendMouseMove(dx: dx, dy: dy)
+    }
+
+    /// GFN mouse buttons: 1 left, 2 middle, 3 right.
+    func setMouseButton(_ button: UInt8, down: Bool) {
+        inputSender?.sendMouseButton(down: down, button: button)
+    }
+
+    func scrollMouse(by delta: Int16) {
+        inputSender?.sendMouseWheel(delta: delta)
+    }
+
+    /// Taps one key, e.g. Backspace or Return from an on-screen keyboard.
+    func pressKey(_ keyCode: UIKeyboardHIDUsage) {
+        inputSender?.sendKeyEvent(down: true, keyCode: keyCode, modifiers: [])
+        inputSender?.sendKeyEvent(down: false, keyCode: keyCode, modifiers: [])
     }
 
     func setOverlayInputPaused(_ paused: Bool) {
@@ -2423,6 +2468,7 @@ extension GFNStreamController: LKRTCDataChannelDelegate {
                 beginControllerTextEntry()
             }
             sender.start()
+            sender.setVirtualGamepad(virtualGamepadState)
             if let previousInputSender = inputSender, previousInputSender !== sender {
                 invalidateControllerTextEntryReplay()
                 previousInputSender.stop()

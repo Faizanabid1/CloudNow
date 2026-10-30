@@ -264,7 +264,12 @@ final class VideoSurfaceView: UIView {
 
     private func setup() {
         backgroundColor = .black
-        displayLayer.videoGravity = .resizeAspectFill
+        #if os(iOS)
+            // Phone screens rarely match the stream's 16:9; letterbox rather than crop the game.
+            displayLayer.videoGravity = .resizeAspect
+        #else
+            displayLayer.videoGravity = .resizeAspectFill
+        #endif
         displayLayer.controlTimebase = nil
 
         let sampleBufferRenderer = displayLayer.sampleBufferRenderer

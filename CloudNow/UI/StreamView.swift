@@ -141,6 +141,9 @@ struct StreamView: View {
             }
         }
         .ignoresSafeArea()
+        #if os(iOS)
+            .phoneStreamChrome()
+        #endif
         .task(id: sessionAttemptState.generation) {
             computeLoadingBadges()
             guard sessionAttemptState.isEnabled else { return }
@@ -402,6 +405,13 @@ struct StreamView: View {
             // the HUD/menu/warning live here instead of as ZStack siblings.
             .overlay {
                 ZStack {
+                    #if os(iOS)
+                        // Touch screens have no Menu button or controller by default.
+                        if overlayState == .none {
+                            StreamTouchControls(streamController: streamController, onPause: togglePauseMenu)
+                        }
+                    #endif
+
                     if overlayState == .pauseMenu {
                         pauseMenu
                             .transition(.move(edge: .leading).combined(with: .opacity))

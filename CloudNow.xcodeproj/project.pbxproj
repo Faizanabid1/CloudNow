@@ -8,12 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		5A6F3F582F8A5EB600C9DB31 /* LiveKitWebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6F3F572F8A5EB600C9DB31 /* LiveKitWebRTC */; };
+		D10000000000000000000001 /* LiveKitWebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = D10000000000000000000002 /* LiveKitWebRTC */; };
+		D10000000000000000000003 /* VirtualControllerKit in Frameworks */ = {isa = PBXBuildFile; productRef = D10000000000000000000004 /* VirtualControllerKit */; };
+		D10000000000000000000010 /* VirtualControllerUI in Frameworks */ = {isa = PBXBuildFile; productRef = D10000000000000000000011 /* VirtualControllerUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		5A6F3F312F8A5B1C00C9DB31 /* CloudNow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CloudNow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C10000000000000000000001 /* CloudNowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CloudNowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C10000000000000000000002 /* CloudNowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CloudNowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D10000000000000000000005 /* CloudNowPhone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CloudNowPhone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -24,6 +28,13 @@
 			);
 			target = 5A6F3F302F8A5B1C00C9DB31 /* CloudNow */;
 		};
+		D10000000000000000000006 /* Exceptions for "CloudNow" folder in "CloudNowPhone" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D1000000000000000000000B /* CloudNowPhone */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +42,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				5A6F3F602F8A5F8700C9DB31 /* Exceptions for "CloudNow" folder in "CloudNow" target */,
+				D10000000000000000000006 /* Exceptions for "CloudNow" folder in "CloudNowPhone" target */,
 			);
 			path = CloudNow;
 			sourceTree = "<group>";
@@ -43,6 +55,11 @@
 		C10000000000000000000004 /* CloudNowUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CloudNowUITests;
+			sourceTree = "<group>";
+		};
+		D10000000000000000000007 /* CloudNowPhone */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CloudNowPhone;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -70,6 +87,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D10000000000000000000008 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D10000000000000000000001 /* LiveKitWebRTC in Frameworks */,
+				D10000000000000000000003 /* VirtualControllerKit in Frameworks */,
+				D10000000000000000000010 /* VirtualControllerUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -79,6 +106,7 @@
 				5A6F3F332F8A5B1C00C9DB31 /* CloudNow */,
 				C10000000000000000000003 /* CloudNowTests */,
 				C10000000000000000000004 /* CloudNowUITests */,
+				D10000000000000000000007 /* CloudNowPhone */,
 				5A6F3F322F8A5B1C00C9DB31 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -89,6 +117,7 @@
 				5A6F3F312F8A5B1C00C9DB31 /* CloudNow.app */,
 				C10000000000000000000001 /* CloudNowTests.xctest */,
 				C10000000000000000000002 /* CloudNowUITests.xctest */,
+				D10000000000000000000005 /* CloudNowPhone.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -182,6 +211,32 @@
 			productReference = C10000000000000000000002 /* CloudNowUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		D1000000000000000000000B /* CloudNowPhone */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1000000000000000000000C /* Build configuration list for PBXNativeTarget "CloudNowPhone" */;
+			buildPhases = (
+				D10000000000000000000009 /* Sources */,
+				D10000000000000000000008 /* Frameworks */,
+				D1000000000000000000000A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5A6F3F332F8A5B1C00C9DB31 /* CloudNow */,
+				D10000000000000000000007 /* CloudNowPhone */,
+			);
+			name = CloudNowPhone;
+			packageProductDependencies = (
+				D10000000000000000000002 /* LiveKitWebRTC */,
+				D10000000000000000000004 /* VirtualControllerKit */,
+				D10000000000000000000011 /* VirtualControllerUI */,
+			);
+			productName = CloudNowPhone;
+			productReference = D10000000000000000000005 /* CloudNowPhone.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -203,6 +258,9 @@
 						CreatedOnToolsVersion = 26.4;
 						TestTargetID = 5A6F3F302F8A5B1C00C9DB31;
 					};
+					D1000000000000000000000B = {
+						CreatedOnToolsVersion = 27.1;
+					};
 				};
 			};
 			buildConfigurationList = 5A6F3F2C2F8A5B1C00C9DB31 /* Build configuration list for PBXProject "CloudNow" */;
@@ -216,6 +274,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				5A6F3F562F8A5EB600C9DB31 /* XCRemoteSwiftPackageReference "webrtc-xcframework" */,
+				D1000000000000000000000F /* XCLocalSwiftPackageReference "../OpenNow/Packages/VirtualControllerKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5A6F3F322F8A5B1C00C9DB31 /* Products */;
@@ -225,6 +284,7 @@
 				5A6F3F302F8A5B1C00C9DB31 /* CloudNow */,
 				C1000000000000000000000B /* CloudNowTests */,
 				C1000000000000000000000C /* CloudNowUITests */,
+				D1000000000000000000000B /* CloudNowPhone */,
 			);
 		};
 /* End PBXProject section */
@@ -251,6 +311,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D1000000000000000000000A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -269,6 +336,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		C10000000000000000000008 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10000000000000000000009 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -588,6 +662,86 @@
 			};
 			name = Release;
 		};
+		D1000000000000000000000D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = CloudNow;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CloudNow uses the microphone for voice chat during game sessions.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.opennow.cloudnow;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ProviderLibrarySyncEnabled";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "CloudNow/CloudNow-Bridging-Header.h";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D1000000000000000000000E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = CloudNow;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CloudNow uses the microphone for voice chat during game sessions.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.opennow.cloudnow;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ProviderLibrarySyncEnabled";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "CloudNow/CloudNow-Bridging-Header.h";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -627,7 +781,23 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		D1000000000000000000000C /* Build configuration list for PBXNativeTarget "CloudNowPhone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D1000000000000000000000D /* Debug */,
+				D1000000000000000000000E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D1000000000000000000000F /* XCLocalSwiftPackageReference "../OpenNow/Packages/VirtualControllerKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../OpenNow/Packages/VirtualControllerKit;
+		};
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 		5A6F3F562F8A5EB600C9DB31 /* XCRemoteSwiftPackageReference "webrtc-xcframework" */ = {
@@ -645,6 +815,19 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5A6F3F562F8A5EB600C9DB31 /* XCRemoteSwiftPackageReference "webrtc-xcframework" */;
 			productName = LiveKitWebRTC;
+		};
+		D10000000000000000000002 /* LiveKitWebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5A6F3F562F8A5EB600C9DB31 /* XCRemoteSwiftPackageReference "webrtc-xcframework" */;
+			productName = LiveKitWebRTC;
+		};
+		D10000000000000000000004 /* VirtualControllerKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = VirtualControllerKit;
+		};
+		D10000000000000000000011 /* VirtualControllerUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = VirtualControllerUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

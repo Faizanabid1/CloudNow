@@ -1683,6 +1683,35 @@ struct SettingsView: View {
     ]
 
     private var geForceNowResolutionGroups: [CloudNowSettingOptionGroup<String>] {
+        #if os(iOS)
+            phoneResolutionGroups
+        #else
+            tvResolutionGroups
+        #endif
+    }
+
+    #if os(iOS)
+        /// Phones list every entitled resolution together, flagging the one shaped like the screen.
+        private var phoneResolutionGroups: [CloudNowSettingOptionGroup<String>] {
+            let resolutions = viewModel.availableResolutions
+            let bestFit = PhoneResolution.bestMatch(from: resolutions, screen: PhoneResolution.screenPixels)
+            return [
+                CloudNowSettingOptionGroup(
+                    title: nil,
+                    options: resolutions.map {
+                        CloudNowSettingOption(
+                            value: $0,
+                            title: $0,
+                            badge: $0 == bestFit ? "Best fit" : nil,
+                            accessibilityIdentifier: $0
+                        )
+                    }
+                ),
+            ]
+        }
+    #endif
+
+    private var tvResolutionGroups: [CloudNowSettingOptionGroup<String>] {
         let availableResolutions = Set(viewModel.availableResolutions)
         let hasMembershipData = viewModel.subscription != nil
         let common = commonResolutions

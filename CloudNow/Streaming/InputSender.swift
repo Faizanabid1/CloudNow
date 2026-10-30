@@ -666,6 +666,19 @@ nonisolated protocol DataChannelSender: AnyObject {
     func sendData(_ packet: EncodedInputPacket, completion: @escaping @Sendable (InputSendDisposition) -> Void)
 }
 
+// MARK: - Virtual Gamepad
+
+/// XInput-style state from on-screen touch controls.
+nonisolated struct VirtualGamepadState: Equatable, Sendable {
+    var buttons: UInt16
+    var leftTrigger: UInt8
+    var rightTrigger: UInt8
+    var leftStickX: Int16
+    var leftStickY: Int16
+    var rightStickX: Int16
+    var rightStickY: Int16
+}
+
 // MARK: - InputSender
 
 /// Owns all mutable input state on one latency-sensitive serial queue.
@@ -732,6 +745,9 @@ final nonisolated class InputSender: @unchecked Sendable {
     private var lastButtons: [Int: UInt16] = [:]
     private var lastSnapshots: [Int: GamepadSnapshot] = [:]
     private var lastSnapshotSend: [Int: UInt64] = [:]
+    /// On-screen touch controls; they hold a slot like a physical pad while attached.
+    private var virtualGamepad: VirtualGamepadState?
+    private var virtualGamepadSlot: Int?
 
     private var lastMicroDpad: (x: Float, y: Float) = (0, 0)
     private var lastControllerTouchpad: (x: Float, y: Float) = (0, 0)
@@ -804,6 +820,10 @@ final nonisolated class InputSender: @unchecked Sendable {
                 sendGamepadSnapshot(neutralSnapshot(bitmap: gamepadBitmap), slot: slot, force: true)
                 sendSonyDeviceChange(slot: slot, connected: false)
             }
+            if let slot = virtualGamepadSlot {
+                sendGamepadSnapshot(neutralSnapshot(bitmap: gamepadBitmap), slot: slot, force: true)
+            }
+            virtualGamepadSlot = nil
             for extendedController in extendedControllers {
                 clearControllerHandlers(extendedController)
                 releaseControllerInput(extendedController)
@@ -990,6 +1010,9 @@ final nonisolated class InputSender: @unchecked Sendable {
 
         for controller in extendedControllers.sorted(by: { slot(for: $0) < slot(for: $1) }) {
             sendGamepadState(for: controller, sampleOverlay: true, now: now)
+        }
+        if let slot = virtualGamepadSlot, let state = virtualGamepad {
+            sendGamepadSnapshot(virtualSnapshot(state), slot: slot, now: now)
         }
 
         if remoteMode == .dualsense,
@@ -2050,8 +2073,58 @@ final nonisolated class InputSender: @unchecked Sendable {
     }
 
     private var firstFreeSlot: Int? {
-        let used = Set(controllerSlots.values)
+        var used = Set(controllerSlots.values)
+        if let virtualGamepadSlot {
+            used.insert(virtualGamepadSlot)
+        }
         return (0 ..< 4).first { !used.contains($0) }
+    }
+
+    // MARK: Virtual Gamepad
+
+    /// Feeds on-screen touch controls in as an extra pad. The first state claims a free slot
+    /// the way a connecting controller does; nil releases it.
+    func setVirtualGamepad(_ state: VirtualGamepadState?) {
+        inputQueue.async { [weak self] in
+            guard let self else { return }
+            virtualGamepad = state
+            syncVirtualGamepad()
+        }
+    }
+
+    private func syncVirtualGamepad() {
+        guard isRunning else { return }
+        guard let state = virtualGamepad else {
+            guard let slot = virtualGamepadSlot else { return }
+            virtualGamepadSlot = nil
+            gamepadBitmap &= ~Self.extendedGamepadBitmapMask(for: slot)
+            lastSnapshots[slot] = nil
+            lastSnapshotSend[slot] = nil
+            sendGamepadSnapshot(neutralSnapshot(bitmap: gamepadBitmap), slot: slot, force: true)
+            return
+        }
+        if virtualGamepadSlot == nil {
+            guard let slot = firstFreeSlot else { return }
+            virtualGamepadSlot = slot
+            gamepadBitmap |= Self.extendedGamepadBitmapMask(for: slot)
+            sendGamepadSnapshot(neutralSnapshot(bitmap: gamepadBitmap), slot: slot, force: true)
+        }
+        if let slot = virtualGamepadSlot, !isPaused {
+            sendGamepadSnapshot(virtualSnapshot(state), slot: slot)
+        }
+    }
+
+    private func virtualSnapshot(_ state: VirtualGamepadState) -> GamepadSnapshot {
+        GamepadSnapshot(
+            buttons: state.buttons,
+            leftTrigger: state.leftTrigger,
+            rightTrigger: state.rightTrigger,
+            leftStickX: state.leftStickX,
+            leftStickY: state.leftStickY,
+            rightStickX: state.rightStickX,
+            rightStickY: state.rightStickY,
+            bitmap: gamepadBitmap
+        )
     }
 
     private func sendSonyDeviceChange(

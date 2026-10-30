@@ -16,6 +16,9 @@ struct CloudNowApp: App {
     @State private var cloudSessionCoordinator = CloudSessionCoordinator()
     @State private var hasRestoredApplicationState = false
     private let xboxEnvironment: XboxCloudEnvironment
+    #if os(iOS)
+        @UIApplicationDelegateAdaptor(PhoneAppDelegate.self) private var phoneAppDelegate
+    #endif
     #if DEBUG
         private let usesUITestFixtures: Bool
         private let uiTestColorScheme: ColorScheme?
@@ -178,11 +181,19 @@ struct CloudNowApp: App {
             } else if let selectedProvider = providerCoordinator.selectedProvider {
                 switch selectedProvider {
                 case .geForceNow:
-                    if authManager.isAuthenticated {
-                        MainTabView()
-                    } else {
-                        LoginView()
-                    }
+                    #if os(iOS)
+                        if authManager.isAuthenticated {
+                            PhoneMainTabView()
+                        } else {
+                            PhoneLoginView()
+                        }
+                    #else
+                        if authManager.isAuthenticated {
+                            MainTabView()
+                        } else {
+                            LoginView()
+                        }
+                    #endif
                 case .xboxCloudGaming:
                     if !xboxAuthManager.canRequestMicrosoftDeviceCode {
                         XboxCloudConfigurationRequiredView()
@@ -206,7 +217,11 @@ struct CloudNowApp: App {
                     }
                 }
             } else {
-                CloudServiceSelectionView()
+                #if os(iOS)
+                    PhoneServiceSelectionView()
+                #else
+                    CloudServiceSelectionView()
+                #endif
             }
         }
         .environment(authManager)
