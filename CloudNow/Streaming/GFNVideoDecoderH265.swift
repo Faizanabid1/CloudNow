@@ -185,6 +185,9 @@ final nonisolated class CloudVideoDecoderH265: NSObject, LKRTCVideoDecoder, @unc
     private var videoFormat: CMVideoFormatDescription?
     private var parameterSetSignature: [Data]?
     private var session: VTDecompressionSession?
+    /// Asynchronous output failures surface on the following `decode` call.
+    private let outputError = DecoderOutputErrorSlot()
+    private var consecutiveFailures = 0
 
     func setCallback(_ callback: @escaping RTCVideoDecoderCallback) {
         self.callback = callback
@@ -198,6 +201,8 @@ final nonisolated class CloudVideoDecoderH265: NSObject, LKRTCVideoDecoder, @unc
         destroySession()
         videoFormat = nil
         parameterSetSignature = nil
+        consecutiveFailures = 0
+        _ = outputError.take()
         callback = nil
         return 0
     }
@@ -212,10 +217,17 @@ final nonisolated class CloudVideoDecoderH265: NSObject, LKRTCVideoDecoder, @unc
         codecSpecificInfo _: (any LKRTCCodecSpecificInfo)?,
         renderTimeMs _: Int64
     ) -> NSInteger {
+        let enhanced = CloudVideoDecoderPolicy.enhancedRecovery
         let data = encodedImage.buffer
         guard !data.isEmpty else { return -1 }
         let nalus = H265AnnexBConverter.nalUnits(in: data)
         guard !nalus.isEmpty else { return -1 }
+        let isKeyframe = encodedImage.frameType == .videoFrameKey
+
+        if enhanced, !handlePreviousOutputError(isKeyframe: isKeyframe) {
+            // Ask WebRTC for a keyframe instead of decoding on a broken reference chain.
+            return -1
+        }
 
         // Keyframes carry VPS/SPS/PPS in-band (GFN requests sps-pps-idr-in-keyframe).
         // Rebuild the format description when parameter sets arrive and differ.
@@ -227,7 +239,20 @@ final nonisolated class CloudVideoDecoderH265: NSObject, LKRTCVideoDecoder, @unc
                 let formatChanged = videoFormat.map { !CMFormatDescriptionEqual($0, otherFormatDescription: format) } ?? true
                 if formatChanged {
                     videoFormat = format
-                    destroySession()
+                    if enhanced, let session,
+                       VTDecompressionSessionCanAcceptFormatDescription(session, formatDescription: format)
+                    {
+                        // Same decoder configuration: keep the warm session instead of a
+                        // full teardown and hardware decoder restart.
+                        StreamHealthCounters.record { $0.decoderFormatReuses += 1 }
+                        h265Log.info("format changed; session reused")
+                    } else {
+                        if session != nil {
+                            StreamHealthCounters.record { $0.decoderSessionRebuilds += 1 }
+                            h265Log.info("format changed; session rebuilt")
+                        }
+                        destroySession()
+                    }
                 }
             }
         }
@@ -244,10 +269,16 @@ final nonisolated class CloudVideoDecoderH265: NSObject, LKRTCVideoDecoder, @unc
 
         let rtpTimestamp = Int32(bitPattern: encodedImage.timeStamp)
         let decodeFailed = Mutex(false)
-        let handler: VTDecompressionOutputHandler = { [weak self] status, _, imageBuffer, _, _ in
+        let frameCallback = DecoderFrameCallback(deliver: callback)
+        let outputError = outputError
+        let handler: VTDecompressionOutputHandler = { status, _, imageBuffer, _, _ in
             guard status == noErr, let imageBuffer else {
                 h265Log.error("decode output failed: \(status)")
                 decodeFailed.withLock { $0 = true }
+                if enhanced {
+                    StreamHealthCounters.record { $0.decoderOutputErrors += 1 }
+                    outputError.store(status == noErr ? kVTVideoDecoderBadDataErr : status)
+                }
                 return
             }
             let frame = LKRTCVideoFrame(
@@ -256,22 +287,57 @@ final nonisolated class CloudVideoDecoderH265: NSObject, LKRTCVideoDecoder, @unc
                 timeStampNs: 0
             )
             frame.timeStamp = rtpTimestamp
-            self?.callback?(frame)
+            frameCallback.deliver?(frame)
         }
-        // Synchronous decode: GFN streams have no B-frame reordering (zero-latency encode),
-        // so decode order is display order and no reorder queue is needed.
-        var status = VTDecompressionSessionDecodeFrame(session, sampleBuffer: sampleBuffer, flags: [], infoFlagsOut: nil, outputHandler: handler)
-        if status == kVTInvalidSessionErr {
-            // Session dies when the app is backgrounded — recreate and retry once.
+        // GFN streams have no B-frame reordering (zero-latency encode), so decode order is
+        // display order. iOS decodes asynchronously so WebRTC's decode thread can accept the
+        // next frame while the hardware works; Apple TV keeps the synchronous path.
+        let flags = CloudVideoDecoderPolicy.decodeFlags
+        var status = VTDecompressionSessionDecodeFrame(session, sampleBuffer: sampleBuffer, flags: flags, infoFlagsOut: nil, outputHandler: handler)
+        if CloudVideoDecoderPolicy.requiresSessionRebuild(status) {
+            // Session dies when the app is backgrounded or the hardware decoder resets —
+            // recreate and retry once.
+            h265Log.error("session unusable (\(status)); rebuilding")
+            if status == kVTVideoDecoderMalfunctionErr {
+                StreamHealthCounters.record { $0.decoderMalfunctions += 1 }
+            }
+            StreamHealthCounters.record { $0.decoderSessionRebuilds += 1 }
             destroySession()
             guard createSession(format: videoFormat), let retrySession = self.session else { return -1 }
-            status = VTDecompressionSessionDecodeFrame(retrySession, sampleBuffer: sampleBuffer, flags: [], infoFlagsOut: nil, outputHandler: handler)
+            status = VTDecompressionSessionDecodeFrame(retrySession, sampleBuffer: sampleBuffer, flags: flags, infoFlagsOut: nil, outputHandler: handler)
         }
-        if status != noErr || decodeFailed.withLock({ $0 }) {
+        if status != noErr || (!enhanced && decodeFailed.withLock({ $0 })) {
             h265Log.error("decode failed: \(status)")
+            if enhanced { StreamHealthCounters.record { $0.decoderOutputErrors += 1 } }
             return -1
         }
         return 0
+    }
+
+    /// Applies an asynchronous output failure from an earlier frame. Returns false when this
+    /// frame should not be decoded (a delta frame after a failure needs a fresh keyframe).
+    private func handlePreviousOutputError(isKeyframe: Bool) -> Bool {
+        let previous = outputError.take()
+        guard previous != noErr else {
+            consecutiveFailures = 0
+            return true
+        }
+        consecutiveFailures += 1
+        if previous == kVTVideoDecoderMalfunctionErr
+            || previous == kVTInvalidSessionErr
+            || consecutiveFailures >= CloudVideoDecoderPolicy.consecutiveFailureLimit
+        {
+            // A malfunctioning session keeps failing every frame; LiveKit resets it too.
+            h265Log.error("rebuilding session after \(self.consecutiveFailures) failure(s), last \(previous)")
+            if previous == kVTVideoDecoderMalfunctionErr {
+                StreamHealthCounters.record { $0.decoderMalfunctions += 1 }
+            }
+            StreamHealthCounters.record { $0.decoderSessionRebuilds += 1 }
+            destroySession()
+            consecutiveFailures = 0
+        }
+        // A keyframe resets every reference, so decode it rather than waiting for another.
+        return isKeyframe
     }
 
     // MARK: - VideoToolbox session

@@ -494,6 +494,11 @@ class GamesViewModel {
         preferredStoreIds = snapshot.preferredStoreIds
         recentlyPlayedIds = snapshot.recentlyPlayedIds
         streamSettings = (snapshot.streamSettings ?? StreamSettings()).normalizedForClient
+        #if os(iOS)
+            if PhoneStreamDefaults.migrate(&streamSettings) {
+                saveSettings()
+            }
+        #endif
         lastSession = snapshot.lastSession
         currentVpcId = snapshot.vpcId
 

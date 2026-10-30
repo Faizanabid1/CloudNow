@@ -35,6 +35,13 @@
 			);
 			target = D1000000000000000000000B /* CloudNowPhone */;
 		};
+		D10000000000000000000012 /* Exceptions for "CloudNowPhone" folder in "CloudNowPhone" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D1000000000000000000000B /* CloudNowPhone */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -59,6 +66,9 @@
 		};
 		D10000000000000000000007 /* CloudNowPhone */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D10000000000000000000012 /* Exceptions for "CloudNowPhone" folder in "CloudNowPhone" target */,
+			);
 			path = CloudNowPhone;
 			sourceTree = "<group>";
 		};
@@ -672,6 +682,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CloudNowPhone/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "GeForce Now Duo";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
@@ -713,6 +724,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CloudNowPhone/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "GeForce Now Duo";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";

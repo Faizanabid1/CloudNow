@@ -159,6 +159,8 @@ nonisolated struct StreamStats: Equatable {
     /// messages (0 until the first message arrives). The official client shows this
     /// alongside the stream FPS.
     var gameFps: Double = 0
+    /// Display, thermal and decoder health from the iPhone/iPad stream health logger.
+    var device = StreamDeviceHealth()
 }
 
 /// Audio metrics surfaced in the statistics HUD, refreshed once per stats tick.
@@ -215,6 +217,8 @@ private nonisolated struct VideoStatsSnapshot {
 private nonisolated struct ConnectionStatsSnapshot {
     var rttMs: Double
     var selectedNetworkPath: String
+    /// Receive-side bandwidth estimate for the selected pair; 0 when WebRTC reports none.
+    var availableIncomingBitrateKbps: Int
 }
 
 /// Audio-pipeline latency counters sampled from the full statistics report in diagnostic mode.
@@ -392,6 +396,15 @@ final class GFNStreamController: NSObject {
     private var reconnectAttempt = 0
     private var reconnectTask: Task<Void, Never>?
     private static let maxReconnectAttempts = 3
+    /// Pending reconnect after ICE reported `disconnected`. That state is transient: ICE often
+    /// recovers by itself within a second or two, which a full session reconnect would turn
+    /// into a multi-second outage.
+    private var iceDisconnectGraceTask: Task<Void, Never>?
+    #if os(iOS)
+        private static let iceDisconnectGrace: Duration? = .milliseconds(3500)
+    #else
+        private static let iceDisconnectGrace: Duration? = nil
+    #endif
     /// Set when the server sends an `exitMessage` (game closed, session ended, kicked). The
     /// subsequent ICE disconnect is then treated as a normal end — not a reconnect candidate.
     private var serverStopped = false
@@ -793,6 +806,8 @@ final class GFNStreamController: NSObject {
     func disconnect() {
         reconnectTask?.cancel()
         reconnectTask = nil
+        cancelIceDisconnectGrace()
+        StreamHealthLogger.shared.endSession()
         connectionGeneration &+= 1
         onReconnectNeeded = nil
         stopRtcEventLog()
@@ -865,9 +880,11 @@ final class GFNStreamController: NSObject {
     private func attemptReconnect() {
         reconnectTask?.cancel()
         reconnectTask = nil
+        cancelIceDisconnectGrace()
         reconnectAttempt += 1
         let attempt = reconnectAttempt
         gfnLog.info("attemptReconnect: attempt \(attempt)/\(Self.maxReconnectAttempts)")
+        StreamHealthLogger.shared.note("reconnect attempt \(attempt) of \(Self.maxReconnectAttempts)")
         invalidateControllerTextEntryReplay()
 
         guard attempt <= Self.maxReconnectAttempts, onReconnectNeeded != nil else {
@@ -936,6 +953,51 @@ final class GFNStreamController: NSObject {
                 finishFailedReconnect(attempt: attempt)
             }
         }
+    }
+
+    /// Waits out a transient ICE `disconnected` state before tearing the session down.
+    /// Recovery (`connected`/`completed`), failure and teardown all cancel the wait.
+    private func beginIceDisconnectGrace(_ grace: Duration) {
+        guard iceDisconnectGraceTask == nil else { return }
+        gfnLog.info("[ICE] disconnected; waiting \(grace) for recovery before reconnecting")
+        StreamHealthLogger.shared.note("ICE disconnected; grace period started")
+        let generation = connectionGeneration
+        iceDisconnectGraceTask = Task { [weak self] in
+            try? await Task.sleep(for: grace)
+            guard let self, !Task.isCancelled, connectionGeneration == generation else { return }
+            iceDisconnectGraceTask = nil
+            gfnLog.info("[ICE] still disconnected after grace period; reconnecting")
+            StreamHealthLogger.shared.note("ICE did not recover; reconnecting")
+            stopStatsTimer()
+            if serverStopped {
+                state = .sessionEnded
+            } else {
+                attemptReconnect()
+            }
+        }
+    }
+
+    private func beginStreamHealthLog() {
+        guard StreamHealthLogger.isEnabled else { return }
+        let policy = Self.nvstBitratePolicy
+        let colorRequest = settings.colorRequest(
+            localCapabilities: .detect(codec: settings.codec.resolvedCodec),
+            accountAllowsHDR: accountAllowsHDR
+        )
+        StreamHealthLogger.shared.beginSession(
+            summary: [
+                "requested \(settings.resolution) at \(settings.fps) fps, max \(settings.maxBitrateKbps / 1000) Mbps",
+                "codec \(settings.codec.rawValue) (resolved \(settings.codec.resolvedCodec.rawValue)), color \(settings.colorPreference.rawValue), bit depth \(colorRequest.bitDepth), chroma \(settings.effectiveChromaFormat.rawValue)",
+                "bitrate floor \(policy.floorPercent)%, start \(policy.initialPercent)%, frame rate control \(policy.frameRateControl ? "on" : "off")",
+                "zone \(Self.zoneShortName(from: sessionInfo?.zone ?? ""))",
+            ],
+            preferredFrameRate: settings.fps
+        )
+    }
+
+    private func cancelIceDisconnectGrace() {
+        iceDisconnectGraceTask?.cancel()
+        iceDisconnectGraceTask = nil
     }
 
     private func finishFailedReconnect(attempt: Int) {
@@ -1405,6 +1467,33 @@ final class GFNStreamController: NSObject {
         return (ufrag, pwd, fingerprint)
     }
 
+    /// Server-side rate control requested in the NVST SDP.
+    ///
+    /// Phones and iPads stream over Wi-Fi, where a short radio blackout at 70–100 Mbps strands
+    /// more packets than NACK can recover and forces a multi-megabit keyframe. A low floor and
+    /// a moderate start let the encoder back off quickly, and dynamic frame control lets the
+    /// server drop frame rate (not resolution, which would rebuild the decoder) under
+    /// congestion. Apple TV keeps its wired-network values.
+    nonisolated struct NvstBitratePolicy {
+        let floorPercent: Int
+        let initialPercent: Int
+        let frameRateControl: Bool
+    }
+
+    #if os(iOS)
+        nonisolated static let nvstBitratePolicy = NvstBitratePolicy(
+            floorPercent: 15,
+            initialPercent: 50,
+            frameRateControl: true
+        )
+    #else
+        nonisolated static let nvstBitratePolicy = NvstBitratePolicy(
+            floorPercent: 35,
+            initialPercent: 70,
+            frameRateControl: false
+        )
+    #endif
+
     /// Builds the NVIDIA streaming protocol capability descriptor sent alongside the WebRTC answer.
     /// Builds the NVST SDP capability descriptor — critically includes the client's ICE credentials so the
     /// GFN server can validate STUN MESSAGE-INTEGRITY on incoming binding requests.
@@ -1418,8 +1507,11 @@ final class GFNStreamController: NSObject {
         let resolutionParts = settings.resolution.split(separator: "x")
         let width = Int(resolutionParts.first ?? "1920") ?? 1920
         let height = Int(resolutionParts.last ?? "1080") ?? 1080
-        let minBitrateKbps = max(5000, settings.maxBitrateKbps * 35 / 100)
-        let initialBitrateKbps = max(minBitrateKbps, settings.maxBitrateKbps * 70 / 100)
+        let minBitrateKbps = max(5000, settings.maxBitrateKbps * Self.nvstBitratePolicy.floorPercent / 100)
+        let initialBitrateKbps = max(
+            minBitrateKbps,
+            settings.maxBitrateKbps * Self.nvstBitratePolicy.initialPercent / 100
+        )
         let colorRequest = settings.colorRequest(
             localCapabilities: .detect(codec: settings.codec.resolvedCodec),
             accountAllowsHDR: accountAllowsHDR
@@ -1440,7 +1532,7 @@ final class GFNStreamController: NSObject {
             "a=vqos.fec.rateDropWindow:10",
             "a=vqos.fec.repairPercent:5",
             "a=vqos.drc.enable:0",
-            "a=vqos.dfc.enable:0",
+            "a=vqos.dfc.enable:\(Self.nvstBitratePolicy.frameRateControl ? 1 : 0)",
             "a=video.enableRtpNack:1",
             "a=video.packetSize:1140",
             "a=bwe.useOwdCongestionControl:1",
@@ -1641,6 +1733,7 @@ final class GFNStreamController: NSObject {
                             updateStats {
                                 $0.rttMs = snapshot.rttMs
                                 $0.selectedNetworkPath = snapshot.selectedNetworkPath
+                                $0.availableIncomingBitrateKbps = snapshot.availableIncomingBitrateKbps
                             }
                         }
                         if let audioSample {
@@ -1769,7 +1862,13 @@ final class GFNStreamController: NSObject {
 
     private nonisolated static func parseConnectionStats(_ report: LKRTCStatisticsReport) -> ConnectionStatsSnapshot? {
         var candidateDetails: [String: (protocolName: String, candidateType: String)] = [:]
-        var candidatePairs: [String: (localID: String, remoteID: String, rttMs: Double, nominated: Bool)] = [:]
+        var candidatePairs: [String: (
+            localID: String,
+            remoteID: String,
+            rttMs: Double,
+            nominated: Bool,
+            availableIncomingBitrateKbps: Int
+        )] = [:]
         var selectedCandidatePairID: String?
 
         for (id, stat) in report.statistics {
@@ -1788,7 +1887,8 @@ final class GFNStreamController: NSObject {
                     localID: stat.values["localCandidateId"] as? String ?? "",
                     remoteID: stat.values["remoteCandidateId"] as? String ?? "",
                     rttMs: numericValue(stat.values["currentRoundTripTime"]) * 1000,
-                    nominated: boolValue(stat.values["nominated"]) ?? false
+                    nominated: boolValue(stat.values["nominated"]) ?? false,
+                    availableIncomingBitrateKbps: Int(numericValue(stat.values["availableIncomingBitrate"]) / 1000)
                 )
             }
         }
@@ -1815,7 +1915,8 @@ final class GFNStreamController: NSObject {
         }
         return ConnectionStatsSnapshot(
             rttMs: selectedPair.rttMs,
-            selectedNetworkPath: selectedNetworkPath
+            selectedNetworkPath: selectedNetworkPath,
+            availableIncomingBitrateKbps: selectedPair.availableIncomingBitrateKbps
         )
     }
 
@@ -1929,6 +2030,7 @@ final class GFNStreamController: NSObject {
         }
 
         previousVideoStats = sample
+        StreamHealthLogger.shared.sample(into: &next)
         if next != stats {
             stats = next
         }
@@ -2186,10 +2288,16 @@ extension GFNStreamController: LKRTCPeerConnectionDelegate {
             guard let self, peerConnection === sourcePeerConnection else { return }
             switch newState {
             case .connected, .completed:
+                if iceDisconnectGraceTask != nil {
+                    gfnLog.info("[ICE] recovered within grace period")
+                    StreamHealthLogger.shared.note("ICE recovered without reconnect")
+                    cancelIceDisconnectGrace()
+                }
                 wasStreaming = true
                 reconnectAttempt = 0
                 state = .streaming
                 if streamingStartedAt == nil {
+                    beginStreamHealthLog()
                     let connectedAt = Date()
                     streamingStartedAt = connectedAt
                     let startedAt = sessionStartedAt ?? connectedAt
@@ -2201,6 +2309,11 @@ extension GFNStreamController: LKRTCPeerConnectionDelegate {
                 }
                 startStatsTimer()
             case .disconnected:
+                if !serverStopped, wasStreaming, let grace = Self.iceDisconnectGrace {
+                    // Keep stats running so the health log records the outage.
+                    beginIceDisconnectGrace(grace)
+                    return
+                }
                 stopStatsTimer()
                 if serverStopped {
                     state = .sessionEnded
@@ -2210,6 +2323,7 @@ extension GFNStreamController: LKRTCPeerConnectionDelegate {
                     state = .disconnected(reason: "ICE disconnected")
                 }
             case .failed:
+                cancelIceDisconnectGrace()
                 stopStatsTimer()
                 if serverStopped {
                     state = .sessionEnded

@@ -453,6 +453,11 @@ private struct CoreStatsColumn: View {
                 )
                 StatsRow(label: L10n.text("format"), value: videoFormatValue)
             }
+            #if os(iOS)
+                Divider()
+                    .overlay(StatsHUDPalette.divider, ignoresSafeAreaEdges: [])
+                DeviceHealthSection(stats: stats)
+            #endif
             Divider()
                 .overlay(StatsHUDPalette.divider, ignoresSafeAreaEdges: [])
             StatsSection(title: L10n.text("audio")) {
@@ -540,6 +545,52 @@ private struct CoreStatsColumn: View {
         }
     }
 }
+
+#if os(iOS)
+    /// Phone-side causes of stutter: refresh rate, heat, decoder resets and loss recovery.
+    private struct DeviceHealthSection: View {
+        let stats: StreamStats
+
+        var body: some View {
+            let device = stats.device
+            StatsSection(title: "Device") {
+                StatsRow(
+                    label: "Display · Thermal",
+                    value: "\(displayValue(device)) · \(device.thermalState.isEmpty ? "–" : device.thermalState)"
+                        + (device.lowPowerMode ? " · Low Power" : ""),
+                    warning: displayIsSlow(device)
+                        || device.thermalState == "serious"
+                        || device.thermalState == "critical"
+                        || device.lowPowerMode
+                )
+                StatsRow(
+                    label: "Decoder",
+                    value: "\(decoderPath(device)) · \(device.decoderRebuilds) resets · \(device.decoderErrors) errors",
+                    warning: device.softwareDecodedFrames > 0 || device.decoderErrors > 0
+                )
+                StatsRow(
+                    label: "NACK / PLI",
+                    value: "\(stats.nackCount) / \(stats.pliCount)",
+                    warning: stats.pliCount > 0
+                )
+            }
+        }
+
+        private func displayValue(_ device: StreamDeviceHealth) -> String {
+            device.displayRefreshHz > 0 ? "\(Int(device.displayRefreshHz.rounded())) Hz" : "–"
+        }
+
+        /// The display should refresh at least as fast as frames arrive.
+        private func displayIsSlow(_ device: StreamDeviceHealth) -> Bool {
+            device.displayRefreshHz > 0 && stats.fps > device.displayRefreshHz + 5
+        }
+
+        /// Software decoders hand frames over as I420 buffers, which the renderer counts.
+        private func decoderPath(_ device: StreamDeviceHealth) -> String {
+            device.softwareDecodedFrames > 0 ? "Software" : "Hardware"
+        }
+    }
+#endif
 
 private struct DebugStatsColumn: View {
     let stats: StreamStats

@@ -665,6 +665,7 @@ private final nonisolated class WebRTCFrameRenderer: NSObject, LKRTCVideoRendere
                 return
             }
             diagnostics.endConversion(trace, startedAt: conversionStart)
+            StreamHealthCounters.record { $0.softwareDecodedFrames += 1 }
             cvBuf = converted
             decoderPath = .softwareI420
         } else {
@@ -865,6 +866,7 @@ private final nonisolated class WebRTCFrameRenderer: NSObject, LKRTCVideoRendere
 
         if recordFailure {
             diagnostics.recordRendererFailure()
+            StreamHealthCounters.record { $0.rendererFailures += 1 }
         }
         if let requestToRun = result.1 {
             performFlush(requestToRun)
@@ -882,6 +884,7 @@ private final nonisolated class WebRTCFrameRenderer: NSObject, LKRTCVideoRendere
             guard let self else { return }
             let followUp = completeFlush(request)
             diagnostics.recordRendererFlush()
+            StreamHealthCounters.record { $0.rendererFlushes += 1 }
             if let followUp {
                 performFlush(followUp)
             }

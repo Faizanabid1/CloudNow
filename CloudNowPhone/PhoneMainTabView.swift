@@ -55,7 +55,9 @@ struct PhoneMainTabView: View {
             if phase == .background {
                 viewModel.cancelStoreConnection()
             }
-            guard phase == .active, loadsRemoteData else { return }
+            // Returning from Control Center mid-stream also makes the scene active; a full
+            // library refresh then would compete with the stream for network and CPU.
+            guard phase == .active, loadsRemoteData, gameToPlay == nil else { return }
             viewModel.startForegroundLibraryRefresh(authManager: authManager)
         }
         .onDisappear {

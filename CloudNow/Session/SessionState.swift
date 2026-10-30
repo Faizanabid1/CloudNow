@@ -20,6 +20,13 @@ nonisolated struct StreamSettings: Codable, Equatable {
     static let automaticGameLanguage = "automatic"
     static let defaultGameLanguage = automaticGameLanguage
     static let defaultTextInputTriggerSequence = ControllerButtonSequence(buttons: [.options, .buttonY])
+    #if os(iOS)
+        /// 4:4:4 spreads the same bitrate over twice the color samples and doubles the
+        /// phone's decode work; 4:2:0 is the better default for Wi-Fi streaming.
+        static let defaultChromaFormat: ChromaFormat = .yuv420
+    #else
+        static let defaultChromaFormat: ChromaFormat = .yuv444
+    #endif
 
     var resolution: String = "1920x1080"
     var fps: Int = 60
@@ -29,7 +36,7 @@ nonisolated struct StreamSettings: Codable, Equatable {
 
     var codec: VideoCodec = .automatic
     var colorPreference: ColorModePreference = .automatic
-    var chromaFormat: ChromaFormat = .yuv444
+    var chromaFormat: ChromaFormat = Self.defaultChromaFormat
     var keyboardLayout: String = Self.defaultKeyboardLayout
     var gameLanguage: String = Self.defaultGameLanguage
     var enableL4S: Bool = true

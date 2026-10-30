@@ -1401,6 +1401,10 @@ struct SettingsView: View {
                     )
                 #endif
 
+                #if os(iOS)
+                    StreamHealthSettingsSection()
+                #endif
+
                 CloudNowStorageAndDataSection(
                     isPerformingAction: isProviderActionBusy,
                     clearCache: { dataDialog = .confirmClearCache },
