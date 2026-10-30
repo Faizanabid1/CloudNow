@@ -97,7 +97,12 @@ enum L10n {
     }
 
     static func text(_ key: String) -> String {
-        activeTable[key] ?? fallbackTable[key] ?? key
+        #if os(iOS)
+            if let phoneText = PhoneStrings.text(for: key, localeCode: localeCode) {
+                return phoneText
+            }
+        #endif
+        return activeTable[key] ?? fallbackTable[key] ?? key
     }
 
     /// Resolves a key against an explicit tvOS locale. This keeps localization validation
